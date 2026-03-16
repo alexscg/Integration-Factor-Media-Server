@@ -1,0 +1,35 @@
+{
+  "shortToFull": {
+    "Beethoven": "Ludwig van Beethoven",
+    "Mozart": "Wolfgang Amadeus Mozart",
+    "Bach": "Johann Sebastian Bach",
+    "Vivaldi": "Antonio Vivaldi",
+    "Chopin": "Frederic Chopin",
+    "Verdi": "Giuseppe Verdi",
+    "Strauss": "Johann Strauss",
+    "Liszt": "Franz Liszt",
+    "Schubert": "Franz Schubert",
+    "Debussy": "Claude Debussy",
+    "Dvorak": "Antonin Dvorak",
+    "Tchaikovsky": "Pyotr Ilyich Tchaikovsky",
+    "Rachmaninov": "Sergei Rachmaninov",
+    "Rachmaninoff": "Sergei Rachmaninov",
+    "Paganini": "Paganini"
+  },
+  "full": [
+    "Antonin Dvorak",
+    "Antonio Vivaldi",
+    "Claude Debussy",
+    "Franz Liszt",
+    "Franz Schubert",
+    "Frederic Chopin",
+    "Giuseppe Verdi",
+    "Johann Sebastian Bach",
+    "Johann Strauss",
+    "Ludwig van Beethoven",
+    "Pyotr Ilyich Tchaikovsky",
+    "Sergei Rachmaninov",
+    "Paganini",
+    "Wolfgang Amadeus Mozart"
+  ]
+}
