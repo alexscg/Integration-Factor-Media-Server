@@ -1,4 +1,4 @@
-require("dotenv").config({ path: "D:/CODE/Integration-Factor/.env" });
+require("dotenv").config({ path: "D:/CODE/Integration-Factor-UI/.env" });
 const https = require("https");
 
 // TheAudioDB API Key (using the free test key '123' as per user)

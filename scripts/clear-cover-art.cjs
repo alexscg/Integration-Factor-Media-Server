@@ -1,4 +1,4 @@
-require("dotenv").config({ path: "D:/CODE/Integration-Factor/.env" });
+require("dotenv").config({ path: "D:/CODE/Integration-Factor-UI/.env" });
 const { MongoClient } = require("mongodb");
 
 const MONGODB_URI = process.env.MONGODB_URI;

@@ -42,6 +42,11 @@ const SYNC_ENRICH_ENABLED = process.env.SYNC_ENRICH_ENABLED === "true";
 const COVER_CACHE_DIR = process.env.COVER_CACHE_DIR
   ? path.resolve(path.join(__dirname, ".."), process.env.COVER_CACHE_DIR)
   : null;
+if (!MONGODB_URI || typeof MONGODB_URI !== "string" || !MONGODB_URI.trim()) {
+  console.error("[api] MONGODB_URI is not set. Copy .env.example to .env and set MONGODB_URI (or copy .env from the UI repo).");
+  process.exit(1);
+}
+
 if (COVER_CACHE_DIR) {
   if (!fs.existsSync(COVER_CACHE_DIR)) {
     fs.mkdirSync(COVER_CACHE_DIR, { recursive: true });

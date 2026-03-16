@@ -1,0 +1,18 @@
+---
+description: How to run commands and analyze their output when terminal output is not visible
+alwaysApply: true
+---
+
+# Terminal output capture
+
+The agent often cannot see terminal command output in the tool response. To run commands and analyze their output:
+
+1. **Redirect output to a file in the repo** (so the agent can read it):
+   - `git status > git-status.txt`
+   - `git log -3 --oneline >> git-status.txt`
+   - Or: `some-command 2>&1 > repo-output.txt`
+2. **Use the repo root** for the file (e.g. from `Integration-Factor-Media-Server` run `git status > git-status.txt` so the file is at `Integration-Factor-Media-Server/git-status.txt`).
+3. **Read that file** with the Read tool to analyze the output.
+4. **Clean up** the temp file after (e.g. delete `git-status.txt` or add it to `.gitignore` if it’s in the repo).
+
+When you need to check git status, diff, log, or any command output: run the command with redirect to a file in the workspace, then read the file.

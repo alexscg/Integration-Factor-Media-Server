@@ -1,0 +1,15 @@
+---
+description: How to handle task requests—do the task or explain why not and how to fix
+alwaysApply: true
+---
+
+# Task handling
+
+When the user asks you to do a task:
+
+1. **Do it** – Perform the task (edit files, run commands, commit, etc.) as requested.
+2. **If you cannot** – Clearly state:
+   - **Why** you can’t (e.g. missing permission, missing file, tool limitation).
+   - **How to fix it** (exact steps, commands, or changes the user can make).
+
+Do not skip doing a task without explaining the blocker and the fix.

@@ -23,3 +23,7 @@ yarn-error.log*
 
 # Optional cover cache (if COVER_CACHE_DIR is under repo)
 data/
+
+# Agent temp output (e.g. git status capture)
+git-status.txt
+repo-output.txt
