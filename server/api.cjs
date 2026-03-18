@@ -273,7 +273,11 @@ async function fetchAsBuffer(url, headers = CAA_HEADERS) {
   }
   if (!res.ok) return { ok: false, status: res.status };
   const buf = await res.arrayBuffer();
-  const contentType = res.headers.get("content-type") || "image/jpeg";
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  // Some upstream responses can return HTML/JSON with a 200; ensure we only proxy real images.
+  if (!contentType.startsWith("image/")) {
+    return { ok: false, status: res.status, contentType };
+  }
   return { ok: true, buf: Buffer.from(buf), contentType };
 }
 
@@ -292,7 +296,10 @@ async function fetchCoverAsBuffer(url) {
   });
   if (!res.ok) return { ok: false, status: res.status };
   const buf = await res.arrayBuffer();
-  const contentType = res.headers.get("content-type") || "image/jpeg";
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.startsWith("image/")) {
+    return { ok: false, status: res.status, contentType };
+  }
   return { ok: true, buf: Buffer.from(buf), contentType };
 }
 
@@ -373,7 +380,7 @@ async function handleCoverProxy(req, res) {
     let result;
     if (isCaaOrArchive()) {
       result = await fetchAsBuffer(decoded);
-      if (!result.ok && result.status === 404) {
+      if (!result.ok) {
         const fallback = getCoverArtArchiveFallbackUrl(decoded);
         if (fallback) {
           let fallbackImageUrl = await fetchFirstImageFromCoverArtArchive(fallback.mbid, true);
