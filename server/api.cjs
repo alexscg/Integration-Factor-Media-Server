@@ -405,6 +405,17 @@ async function handleCoverProxy(req, res) {
     }
 
     if (!result.ok) {
+      // If upstream returns 404, it's usually "no cover art available".
+      // Return a tiny transparent PNG so <img> tags still succeed.
+      if (result.status === 404) {
+        const transparentPngBase64 =
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XG5sAAAAASUVORK5CYII=";
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.status(200).end(Buffer.from(transparentPngBase64, "base64"));
+        return;
+      }
+
       return res.status(result.status === 401 ? 502 : result.status).json({
         error: "Upstream returned " + result.status,
       });
