@@ -9,15 +9,19 @@ const { MongoClient, ObjectId } = require("mongodb");
 const fs = require("fs");
 const { spawn } = require("child_process");
 const http = require("http");
+const https = require("https");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// NAS config for download proxy
+// NAS config for download proxy (direct LAN or Cloudflare Tunnel)
 const NAS_HOST = process.env.NAS_HOST;
 const NAS_PORT = process.env.NAS_PORT;
 const NAS_USER = process.env.NAS_USER;
 const NAS_PASS = process.env.NAS_PASS;
+const NAS_TUNNEL_URL = process.env.NAS_TUNNEL_URL ? process.env.NAS_TUNNEL_URL.replace(/\/$/, "") : null;
+const CF_ACCESS_CLIENT_ID = process.env.CF_ACCESS_CLIENT_ID || null;
+const CF_ACCESS_CLIENT_SECRET = process.env.CF_ACCESS_CLIENT_SECRET || null;
 
 // Track running processes
 const runningProcesses = {
@@ -845,10 +849,12 @@ app.get("/api/music/search", async (req, res) => {
 // Get genres (from tracks)
 app.get("/api/genres", async (req, res) => {
   try {
+    if (!db || !tracksColl) return res.status(503).json({ error: "Database not ready" });
     const genres = await tracksColl.distinct("genre");
     res.setHeader("Cache-Control", "public, max-age=300"); // 5 minutes
     res.json(genres);
   } catch (err) {
+    console.error("[api] /api/genres error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -871,6 +877,7 @@ app.get("/api/artists", async (req, res) => {
 // Get stats
 app.get("/api/stats", async (req, res) => {
   try {
+    if (!db || !tracksColl) return res.status(503).json({ error: "Database not ready" });
     const total = await tracksColl.countDocuments();
     const genres = await tracksColl.distinct("genre");
     const artists = await tracksColl.distinct("artist");
@@ -882,6 +889,7 @@ app.get("/api/stats", async (req, res) => {
       totalArtists: artists.length
     });
   } catch (err) {
+    console.error("[api] /api/stats error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1390,12 +1398,24 @@ app.post("/api/enrich/from-url", adminAuth, async (req, res) => {
   }
 });
 
-// Authenticate with NAS and return session id
+// Optional headers for Cloudflare Access when using NAS_TUNNEL_URL
+function getNasRequestHeaders() {
+  const h = { "User-Agent": "Mozilla/5.0 (compatible; IntegrationFactor/1.0)" };
+  if (CF_ACCESS_CLIENT_ID && CF_ACCESS_CLIENT_SECRET) {
+    h["CF-Access-Client-Id"] = CF_ACCESS_CLIENT_ID;
+    h["CF-Access-Client-Secret"] = CF_ACCESS_CLIENT_SECRET;
+  }
+  return h;
+}
+
+// Authenticate with NAS and return session id (direct LAN or via Cloudflare Tunnel)
 function nasAuth() {
   return new Promise((resolve, reject) => {
     const reqPath = `/webapi/entry.cgi?api=SYNO.API.Auth&version=7&method=login&account=${NAS_USER}&passwd=${encodeURIComponent(NAS_PASS)}&session=FileStation&format=sid`;
-    const url = `http://${NAS_HOST}:${NAS_PORT}${reqPath}`;
-    http.get(url, (resp) => {
+    const url = NAS_TUNNEL_URL ? `${NAS_TUNNEL_URL}${reqPath}` : `http://${NAS_HOST}:${NAS_PORT}${reqPath}`;
+    const lib = url.startsWith("https") ? https : http;
+    const opts = { headers: getNasRequestHeaders() };
+    lib.get(url, opts, (resp) => {
       let data = "";
       resp.on("data", (chunk) => (data += chunk));
       resp.on("end", () => {
@@ -1427,18 +1447,25 @@ function getAudioMimeType(filename) {
   return mime || null;
 }
 
+// Base URL for redirects (tunnel or direct NAS)
+function getNasBaseUrl() {
+  return NAS_TUNNEL_URL || `http://${NAS_HOST}:${NAS_PORT}`;
+}
+
 // Request a URL and pipe to res, following redirects; allowOrigin is for CORS; rangeHeader for byte-range (playback)
 function pipeNasDownload(downloadUrl, res, filename, disposition, allowOrigin, rangeHeader, followRedirect = true) {
-  const headers = { "User-Agent": "Mozilla/5.0 (compatible; IntegrationFactor/1.0)" };
+  const headers = getNasRequestHeaders();
   if (rangeHeader) headers.Range = rangeHeader;
   const opts = { headers };
-  const req = http.get(downloadUrl, opts, (nasRes) => {
+  const lib = downloadUrl.startsWith("https") ? https : http;
+  const req = lib.get(downloadUrl, opts, (nasRes) => {
     // Follow redirect (NAS often returns 302 to the actual file)
     if (followRedirect && (nasRes.statusCode === 301 || nasRes.statusCode === 302)) {
       const location = nasRes.headers.location;
       if (location) {
         nasRes.resume(); // drain body so connection can be reused
-        const redirectUrl = location.startsWith("http") ? location : `http://${NAS_HOST}:${NAS_PORT}${location}`;
+        const base = getNasBaseUrl();
+        const redirectUrl = location.startsWith("http") ? location : `${base}${location.startsWith("/") ? "" : "/"}${location}`;
         return pipeNasDownload(redirectUrl, res, filename, disposition, allowOrigin, rangeHeader, true);
       }
     }
@@ -1539,7 +1566,8 @@ app.get("/api/music/download", async (req, res) => {
     const filename = doc.fileName || doc.path.split("/").pop() || "audio";
     // Synology File Station often expects path as JSON array, e.g. ["/Music/Pop/file.mp3"]
     const pathParam = encodeURIComponent(JSON.stringify([doc.path]));
-    const downloadUrl = `http://${NAS_HOST}:${NAS_PORT}/webapi/entry.cgi?api=SYNO.FileStation.Download&version=2&method=download&path=${pathParam}&_sid=${sid}`;
+    const base = NAS_TUNNEL_URL || `http://${NAS_HOST}:${NAS_PORT}`;
+    const downloadUrl = `${base}/webapi/entry.cgi?api=SYNO.FileStation.Download&version=2&method=download&path=${pathParam}&_sid=${sid}`;
     const allowOrigin = req.headers.origin || "*";
     const rangeHeader = req.headers.range || null;
     pipeNasDownload(downloadUrl, res, filename, disposition, allowOrigin, rangeHeader);
