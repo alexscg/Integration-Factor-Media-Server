@@ -319,8 +319,23 @@ const CAA_JSON_HEADERS = {
 
 function pickFirstThumbUrl(first) {
   const thumbs = first?.thumbnails;
-  if (!thumbs) return null;
-  return thumbs["250"] || thumbs.small || thumbs["500"] || thumbs.large || first.image;
+  const pick = thumbs
+    ? thumbs["250"] || thumbs.small || thumbs["500"] || thumbs.large || first.image
+    : first?.image;
+
+  if (!pick || typeof pick !== "string") return null;
+  const s = pick.trim();
+
+  // Some CAA thumbnail fields can be relative paths. Normalize to absolute URL.
+  try {
+    return new URL(s).href;
+  } catch {
+    try {
+      return new URL(s, "https://coverartarchive.org").href;
+    } catch {
+      return null;
+    }
+  }
 }
 
 async function fetchFirstImageFromCoverArtArchive(mbid, useRelease = true) {
